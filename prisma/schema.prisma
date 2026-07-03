@@ -95,6 +95,9 @@ model Lead {
   payments          Payment[]
   callLogs          CallLog[]
   notificationLogs  NotificationLog[]
+
+  @@index([status])
+  @@index([assignedToId])
 }
 
 model StatusHistory {

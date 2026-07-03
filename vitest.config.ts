@@ -6,6 +6,7 @@ export default defineConfig({
   test: {
     environment: "node",
     setupFiles: ["test/helpers/testDb.ts"],
+    // Required: every test file shares the same SQLite file (prisma/test.db).
     fileParallelism: false,
   },
 });
