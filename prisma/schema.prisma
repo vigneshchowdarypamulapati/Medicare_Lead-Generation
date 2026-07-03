@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  AGENT
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  APPOINTMENT_SET
+  SOLD
+  CLOSED
+  NOT_INTERESTED
+}
+
+enum PaymentType {
+  BILLED
+  BOOKED
+  SOLD
+}
+
+enum PaymentStatus {
+  PAID
+  UNPAID
+}
+
+enum CallOutcome {
+  ANSWERED
+  MISSED
+  VOICEMAIL
+}
+
+enum RecipientType {
+  AGENT
+  LEAD
+}
+
+enum NotifChannel {
+  IN_APP
+  EMAIL
+}
+
+enum NotifStatus {
+  SENT
+  SKIPPED
+  FAILED
+}
+
+model User {
+  id             String   @id @default(cuid())
+  name           String
+  email          String   @unique
+  passwordHash   String
+  role           Role
+  phone          String?
+  approved       Boolean  @default(false)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  assignedLeads       Lead[]         @relation("AssignedAgent")
+  statusChanges       StatusHistory[] @relation("StatusChangedBy")
+  assignmentsFrom     Assignment[]    @relation("AssignmentFromAgent")
+  assignmentsTo       Assignment[]    @relation("AssignmentToAgent")
+  assignmentsMadeBy   Assignment[]    @relation("AssignmentBy")
+  paymentsCreated     Payment[]       @relation("PaymentCreatedBy")
+  callLogs            CallLog[]       @relation("CallLogAgent")
+}
+
+model Lead {
+  id                    String     @id @default(cuid())
+  fullName              String
+  phone                 String
+  email                 String?
+  zip                   String
+  ageBracket            String?
+  currentCoverage       String?
+  preferredContactTime  String?
+  notes                 String?
+  status                LeadStatus @default(NEW)
+  assignedToId          String?
+  assignedTo            User?      @relation("AssignedAgent", fields: [assignedToId], references: [id])
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  statusHistory     StatusHistory[]
+  assignments       Assignment[]
+  payments          Payment[]
+  callLogs          CallLog[]
+  notificationLogs  NotificationLog[]
+}
+
+model StatusHistory {
+  id            String     @id @default(cuid())
+  leadId        String
+  lead          Lead       @relation(fields: [leadId], references: [id])
+  fromStatus    LeadStatus?
+  toStatus      LeadStatus
+  changedById   String
+  changedBy     User       @relation("StatusChangedBy", fields: [changedById], references: [id])
+  createdAt     DateTime   @default(now())
+}
+
+model Assignment {
+  id            String   @id @default(cuid())
+  leadId        String
+  lead          Lead     @relation(fields: [leadId], references: [id])
+  fromAgentId   String?
+  fromAgent     User?    @relation("AssignmentFromAgent", fields: [fromAgentId], references: [id])
+  toAgentId     String
+  toAgent       User     @relation("AssignmentToAgent", fields: [toAgentId], references: [id])
+  assignedById  String
+  assignedBy    User     @relation("AssignmentBy", fields: [assignedById], references: [id])
+  createdAt     DateTime @default(now())
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  leadId        String
+  lead          Lead          @relation(fields: [leadId], references: [id])
+  amount        Float
+  type          PaymentType
+  status        PaymentStatus @default(UNPAID)
+  createdById   String
+  createdBy     User          @relation("PaymentCreatedBy", fields: [createdById], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model CallLog {
+  id         String      @id @default(cuid())
+  leadId     String
+  lead       Lead        @relation(fields: [leadId], references: [id])
+  agentId    String
+  agent      User        @relation("CallLogAgent", fields: [agentId], references: [id])
+  outcome    CallOutcome
+  notes      String?
+  createdAt  DateTime    @default(now())
+}
+
+model NotificationLog {
+  id             String         @id @default(cuid())
+  leadId         String
+  lead           Lead           @relation(fields: [leadId], references: [id])
+  recipientType  RecipientType
+  channel        NotifChannel
+  status         NotifStatus
+  createdAt      DateTime       @default(now())
+}
