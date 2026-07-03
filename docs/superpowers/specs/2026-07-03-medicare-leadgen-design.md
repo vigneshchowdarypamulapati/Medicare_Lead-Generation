@@ -83,8 +83,28 @@ preferred contact time, notes. (* = required)
   (answered / missed / voicemail), add notes.
 - Status pipeline: `NEW → CONTACTED → APPOINTMENT_SET → SOLD → CLOSED`
   (agent can also mark `NOT_INTERESTED`). Every change timestamped and recorded.
-- In-app notification badge when a new lead is assigned. Email notification is a
-  stubbed function ready for SMTP config later (out of MVP scope).
+- In-app notification badge when a new lead is assigned (see Notifications below).
+
+## Notifications
+
+When the admin assigns (or reassigns) a lead to an agent, the system notifies
+**both parties** in the same transaction that creates the `Assignment` record:
+
+- **Agent:** in-app notification badge/list in `/agent` ("New lead assigned:
+  {leadName}"), marked unread until viewed. Email notification is a stubbed
+  function (`notifyAgentAssigned`) ready for SMTP config later — logs to
+  console in MVP since real email delivery is out of scope for a $0 build.
+- **Lead (customer):** an email is sent to the lead if they provided an email
+  address, introducing their assigned agent by name and phone number (e.g.
+  "Your Medicare advocate, {agentName}, will be reaching out to you shortly.
+  You can also reach them directly at {agentPhone}."). Implemented as a stubbed
+  function (`notifyLeadOfAssignment`) with the same console-log fallback — the
+  call site and data (agent name/phone, lead email) are wired end-to-end now so
+  real SMTP can be dropped in later without further code changes.
+- If the lead did not provide an email, this step is skipped silently (no error).
+- Both notification attempts are logged to a lightweight `NotificationLog` table
+  (id, leadId, recipientType [AGENT|LEAD], channel, status, createdAt) so the
+  admin can see in the lead detail view whether notifications went out.
 
 ## Data Model
 
@@ -98,6 +118,8 @@ preferred contact time, notes. (* = required)
   (PAID|UNPAID), createdById, createdAt, updatedAt.
 - **CallLog**: id, leadId, agentId, outcome (ANSWERED|MISSED|VOICEMAIL), notes?,
   createdAt.
+- **NotificationLog**: id, leadId, recipientType (AGENT|LEAD), channel
+  (IN_APP|EMAIL), status (SENT|SKIPPED|FAILED), createdAt.
 
 ## Call Handling (MVP)
 
@@ -127,6 +149,9 @@ online payment processing (Stripe later if needed).
 1. A visitor can submit the form successfully.
 2. The lead appears in the admin dashboard automatically.
 3. An admin can assign the lead to an agent.
+3a. On assignment, the agent receives an in-app notification and the lead
+    receives an email introducing their assigned agent (when the lead
+    provided an email address).
 4. The agent can update lead progress.
 5. The admin can see whether the lead is active and its current status.
 6. A payment record can be created and tracked (paid/unpaid).
@@ -139,3 +164,6 @@ online payment processing (Stripe later if needed).
 - Access-control check: agent A cannot see or modify agent B's leads (direct
   URL and API attempts).
 - Form validation: required fields rejected server-side when bypassing client checks.
+- Notification check: assigning a lead creates NotificationLog entries for
+  both AGENT and LEAD recipients, and the agent notification appears in the
+  agent's `/agent` UI as unread.
