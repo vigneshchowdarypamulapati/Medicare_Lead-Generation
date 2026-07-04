@@ -59,3 +59,11 @@ export async function getSessionUser() {
   if (!user || !user.active) return null;
   return user;
 }
+
+export function requireRole<T extends { role: "ADMIN" | "AGENT" }>(
+  user: T | null,
+  role: "ADMIN" | "AGENT"
+): T | null {
+  if (!user || user.role !== role) return null;
+  return user;
+}

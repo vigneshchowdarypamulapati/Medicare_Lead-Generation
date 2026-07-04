@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { signSession, verifySession } from "@/lib/session";
+import { requireRole } from "@/lib/session";
 
 beforeAll(() => {
   process.env.SESSION_SECRET = "test-secret-do-not-use-in-prod";
@@ -20,5 +21,21 @@ describe("session", () => {
 
   it("rejects garbage input", () => {
     expect(verifySession("not-a-real-token")).toBeNull();
+  });
+});
+
+describe("requireRole", () => {
+  it("returns the user when role matches", () => {
+    const user = { id: "u1", role: "ADMIN" as const, active: true };
+    expect(requireRole(user, "ADMIN")).toBe(user);
+  });
+
+  it("returns null when role does not match", () => {
+    const user = { id: "u1", role: "AGENT" as const, active: true };
+    expect(requireRole(user, "ADMIN")).toBeNull();
+  });
+
+  it("returns null when user is null", () => {
+    expect(requireRole(null, "ADMIN")).toBeNull();
   });
 });
