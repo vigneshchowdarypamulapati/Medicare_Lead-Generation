@@ -3,6 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
+const FALLBACK_ERROR = "Something went wrong. Please try again or call us.";
+
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -14,23 +16,33 @@ export default function LoginPage() {
     setError(null);
 
     const data = Object.fromEntries(new FormData(event.currentTarget).entries());
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
 
-    setSubmitting(false);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
 
-    if (res.status !== 200) {
-      const body = (await res.json()) as { error?: string };
-      setError(body.error ?? "Login failed");
-      return;
+      if (res.status !== 200) {
+        let body: { error?: string } = {};
+        try {
+          body = (await res.json()) as { error?: string };
+        } catch {
+          // Non-JSON response body; fall through to the fallback error below.
+        }
+        setError(body.error ?? "Login failed");
+        return;
+      }
+
+      const body = (await res.json()) as { role: "ADMIN" | "AGENT" };
+      router.push(body.role === "ADMIN" ? "/admin" : "/agent");
+      router.refresh();
+    } catch {
+      setError(FALLBACK_ERROR);
+    } finally {
+      setSubmitting(false);
     }
-
-    const body = (await res.json()) as { role: "ADMIN" | "AGENT" };
-    router.push(body.role === "ADMIN" ? "/admin" : "/agent");
-    router.refresh();
   }
 
   return (

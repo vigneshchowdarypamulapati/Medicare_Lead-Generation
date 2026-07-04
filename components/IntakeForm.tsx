@@ -4,6 +4,8 @@ import { useState, type FormEvent } from "react";
 
 type Errors = Record<string, string>;
 
+const FALLBACK_ERROR = "Something went wrong. Please try again or call us.";
+
 export default function IntakeForm() {
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
@@ -17,22 +19,31 @@ export default function IntakeForm() {
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form).entries());
 
-    const res = await fetch("/api/leads", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
+    try {
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
 
-    setSubmitting(false);
+      if (res.status === 201) {
+        setSubmitted(true);
+        form.reset();
+        return;
+      }
 
-    if (res.status === 201) {
-      setSubmitted(true);
-      form.reset();
-      return;
+      let body: { errors?: Errors } = {};
+      try {
+        body = (await res.json()) as { errors?: Errors };
+      } catch {
+        // Non-JSON response body; fall through to the fallback error below.
+      }
+      setErrors(body.errors ?? { form: FALLBACK_ERROR });
+    } catch {
+      setErrors({ form: FALLBACK_ERROR });
+    } finally {
+      setSubmitting(false);
     }
-
-    const body = (await res.json()) as { errors?: Errors };
-    setErrors(body.errors ?? { form: "Something went wrong. Please try again." });
   }
 
   if (submitted) {
@@ -52,27 +63,55 @@ export default function IntakeForm() {
 
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="fullName">Full name *</label>
-        <input id="fullName" name="fullName" required className="w-full rounded-lg border border-slate-300 px-3 py-2" />
-        {errors.fullName && <p className="text-sm text-red-600 mt-1">{errors.fullName}</p>}
+        <input
+          id="fullName"
+          name="fullName"
+          required
+          aria-invalid={errors.fullName ? true : undefined}
+          aria-describedby={errors.fullName ? "fullName-error" : undefined}
+          className="w-full rounded-lg border border-slate-300 px-3 py-2"
+        />
+        {errors.fullName && <p id="fullName-error" className="text-sm text-red-600 mt-1">{errors.fullName}</p>}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="phone">Phone *</label>
-          <input id="phone" name="phone" required className="w-full rounded-lg border border-slate-300 px-3 py-2" />
-          {errors.phone && <p className="text-sm text-red-600 mt-1">{errors.phone}</p>}
+          <input
+            id="phone"
+            name="phone"
+            required
+            aria-invalid={errors.phone ? true : undefined}
+            aria-describedby={errors.phone ? "phone-error" : undefined}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2"
+          />
+          {errors.phone && <p id="phone-error" className="text-sm text-red-600 mt-1">{errors.phone}</p>}
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="zip">ZIP code *</label>
-          <input id="zip" name="zip" required className="w-full rounded-lg border border-slate-300 px-3 py-2" />
-          {errors.zip && <p className="text-sm text-red-600 mt-1">{errors.zip}</p>}
+          <input
+            id="zip"
+            name="zip"
+            required
+            aria-invalid={errors.zip ? true : undefined}
+            aria-describedby={errors.zip ? "zip-error" : undefined}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2"
+          />
+          {errors.zip && <p id="zip-error" className="text-sm text-red-600 mt-1">{errors.zip}</p>}
         </div>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" className="w-full rounded-lg border border-slate-300 px-3 py-2" />
-        {errors.email && <p className="text-sm text-red-600 mt-1">{errors.email}</p>}
+        <input
+          id="email"
+          name="email"
+          type="email"
+          aria-invalid={errors.email ? true : undefined}
+          aria-describedby={errors.email ? "email-error" : undefined}
+          className="w-full rounded-lg border border-slate-300 px-3 py-2"
+        />
+        {errors.email && <p id="email-error" className="text-sm text-red-600 mt-1">{errors.email}</p>}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
