@@ -32,7 +32,7 @@ export default function MedicareSupplementPage() {
         <h2 className="text-xl font-bold text-green-800 mt-8 mb-2">When to enroll</h2>
         <p className="text-slate-700 mb-4">
           The best time to buy a Medigap policy is typically during your Medigap Open Enrollment
-          Period, when you can't be denied coverage or charged more due to health conditions. See our{" "}
+          Period, when you can&apos;t be denied coverage or charged more due to health conditions. See our{" "}
           <Link href="/enrollment-periods" className="underline hover:text-green-800">enrollment periods</Link>{" "}
           guide for details.
         </p>
