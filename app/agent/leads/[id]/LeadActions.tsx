@@ -13,30 +13,68 @@ export default function LeadActions({ leadId, currentStatus }: { leadId: string;
   const [notes, setNotes] = useState("");
   const [savingStatus, setSavingStatus] = useState(false);
   const [savingCall, setSavingCall] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [callError, setCallError] = useState<string | null>(null);
 
   async function updateStatus(event: React.FormEvent) {
     event.preventDefault();
     setSavingStatus(true);
-    await fetch(`/api/agent/leads/${leadId}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    setSavingStatus(false);
-    router.refresh();
+    setStatusError(null);
+    try {
+      const res = await fetch(`/api/agent/leads/${leadId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!res.ok) {
+        let body: { error?: string } = {};
+        try {
+          body = (await res.json()) as { error?: string };
+        } catch {
+          // Non-JSON error response; fall through to the generic message.
+        }
+        setStatusError(body.error ?? "Failed to update status");
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setStatusError("Something went wrong. Please try again.");
+    } finally {
+      setSavingStatus(false);
+    }
   }
 
   async function logCall(event: React.FormEvent) {
     event.preventDefault();
     setSavingCall(true);
-    await fetch(`/api/agent/leads/${leadId}/calls`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ outcome, notes }),
-    });
-    setSavingCall(false);
-    setNotes("");
-    router.refresh();
+    setCallError(null);
+    try {
+      const res = await fetch(`/api/agent/leads/${leadId}/calls`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outcome, notes }),
+      });
+
+      if (!res.ok) {
+        let body: { error?: string } = {};
+        try {
+          body = (await res.json()) as { error?: string };
+        } catch {
+          // Non-JSON error response; fall through to the generic message.
+        }
+        setCallError(body.error ?? "Failed to log call");
+        return;
+      }
+
+      setNotes("");
+      router.refresh();
+    } catch {
+      setCallError("Something went wrong. Please try again.");
+    } finally {
+      setSavingCall(false);
+    }
   }
 
   return (
@@ -53,6 +91,7 @@ export default function LeadActions({ leadId, currentStatus }: { leadId: string;
         <button type="submit" disabled={savingStatus} className="rounded-lg bg-green-700 px-4 py-2 text-white font-semibold hover:bg-green-800 disabled:opacity-60">
           {savingStatus ? "Saving..." : "Update Status"}
         </button>
+        {statusError && <p className="text-sm text-red-600 w-full">{statusError}</p>}
       </form>
 
       <form onSubmit={logCall} className="rounded-xl border border-slate-200 bg-white p-6 grid gap-3">
@@ -72,6 +111,7 @@ export default function LeadActions({ leadId, currentStatus }: { leadId: string;
         <button type="submit" disabled={savingCall} className="rounded-lg bg-green-700 px-4 py-2 text-white font-semibold hover:bg-green-800 disabled:opacity-60 w-fit">
           {savingCall ? "Saving..." : "Log Call"}
         </button>
+        {callError && <p className="text-sm text-red-600">{callError}</p>}
       </form>
     </div>
   );

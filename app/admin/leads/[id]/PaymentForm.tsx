@@ -10,27 +10,63 @@ export default function PaymentForm({ leadId, payments }: { leadId: string; paym
   const [amount, setAmount] = useState("");
   const [type, setType] = useState("SOLD");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleCreate(event: React.FormEvent) {
     event.preventDefault();
     setSubmitting(true);
-    await fetch(`/api/admin/leads/${leadId}/payments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: Number(amount), type }),
-    });
-    setSubmitting(false);
-    setAmount("");
-    router.refresh();
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/leads/${leadId}/payments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Number(amount), type }),
+      });
+
+      if (!res.ok) {
+        let body: { error?: string } = {};
+        try {
+          body = (await res.json()) as { error?: string };
+        } catch {
+          // Non-JSON error response; fall through to the generic message.
+        }
+        setError(body.error ?? "Failed to add payment");
+        return;
+      }
+
+      setAmount("");
+      router.refresh();
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function toggle(paymentId: string, current: "PAID" | "UNPAID") {
-    await fetch(`/api/admin/leads/${leadId}/payments/${paymentId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: current === "PAID" ? "UNPAID" : "PAID" }),
-    });
-    router.refresh();
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/leads/${leadId}/payments/${paymentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: current === "PAID" ? "UNPAID" : "PAID" }),
+      });
+
+      if (!res.ok) {
+        let body: { error?: string } = {};
+        try {
+          body = (await res.json()) as { error?: string };
+        } catch {
+          // Non-JSON error response; fall through to the generic message.
+        }
+        setError(body.error ?? "Failed to update payment status");
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setError("Something went wrong. Please try again.");
+    }
   }
 
   return (
@@ -80,6 +116,7 @@ export default function PaymentForm({ leadId, payments }: { leadId: string; paym
         >
           Add Payment
         </button>
+        {error && <p className="text-sm text-red-600 w-full">{error}</p>}
       </form>
     </div>
   );

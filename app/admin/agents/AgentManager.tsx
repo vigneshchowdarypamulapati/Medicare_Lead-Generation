@@ -8,6 +8,7 @@ type Agent = { id: string; name: string; email: string; phone: string | null; ap
 export default function AgentManager({ agents }: { agents: Agent[] }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [toggleError, setToggleError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
@@ -17,31 +18,57 @@ export default function AgentManager({ agents }: { agents: Agent[] }) {
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form).entries());
 
-    const res = await fetch("/api/admin/agents", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
+    try {
+      const res = await fetch("/api/admin/agents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
 
-    setSubmitting(false);
+      if (res.status !== 201) {
+        let body: { error?: string } = {};
+        try {
+          body = (await res.json()) as { error?: string };
+        } catch {
+          // Non-JSON error response; fall through to the generic message.
+        }
+        setError(body.error ?? "Failed to create agent");
+        return;
+      }
 
-    if (res.status !== 201) {
-      const body = (await res.json()) as { error?: string };
-      setError(body.error ?? "Failed to create agent");
-      return;
+      form.reset();
+      router.refresh();
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-
-    form.reset();
-    router.refresh();
   }
 
   async function toggleApproval(agentId: string, approved: boolean) {
-    await fetch(`/api/admin/agents/${agentId}/approve`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ approved: !approved }),
-    });
-    router.refresh();
+    setToggleError(null);
+    try {
+      const res = await fetch(`/api/admin/agents/${agentId}/approve`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved: !approved }),
+      });
+
+      if (!res.ok) {
+        let body: { error?: string } = {};
+        try {
+          body = (await res.json()) as { error?: string };
+        } catch {
+          // Non-JSON error response; fall through to the generic message.
+        }
+        setToggleError(body.error ?? "Failed to update approval");
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setToggleError("Something went wrong. Please try again.");
+    }
   }
 
   return (
@@ -66,6 +93,7 @@ export default function AgentManager({ agents }: { agents: Agent[] }) {
 
       <section className="rounded-xl border border-slate-200 bg-white p-6">
         <h2 className="font-bold text-slate-900 mb-3">Agents</h2>
+        {toggleError && <p className="mb-3 text-sm text-red-600">{toggleError}</p>}
         <table className="min-w-full text-sm">
           <thead className="bg-slate-100 text-left text-slate-600">
             <tr>

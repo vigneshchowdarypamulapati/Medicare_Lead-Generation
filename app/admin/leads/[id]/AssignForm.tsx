@@ -17,21 +17,31 @@ export default function AssignForm({ leadId, agents }: { leadId: string; agents:
     setSubmitting(true);
     setError(null);
 
-    const res = await fetch(`/api/admin/leads/${leadId}/assign`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agentId }),
-    });
+    try {
+      const res = await fetch(`/api/admin/leads/${leadId}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId }),
+      });
 
-    setSubmitting(false);
+      if (res.status !== 200) {
+        let body: { error?: string } = {};
+        try {
+          body = (await res.json()) as { error?: string };
+        } catch {
+          // Non-JSON error response; fall through to the generic message.
+        }
+        setError(body.error ?? "Failed to assign");
+        return;
+      }
 
-    if (res.status !== 200) {
-      const body = (await res.json()) as { error?: string };
-      setError(body.error ?? "Failed to assign");
-      return;
+      setAgentId("");
+      router.refresh();
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-
-    router.refresh();
   }
 
   const approvedAgents = agents.filter((a) => a.approved);
