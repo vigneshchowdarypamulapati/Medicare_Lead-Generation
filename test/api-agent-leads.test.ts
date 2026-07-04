@@ -48,6 +48,18 @@ describe("agent leads API", () => {
     expect(res.status).toBe(404);
   });
 
+  it("rejects an agent who was de-approved after their session was issued", async () => {
+    const agent = await makeAgent();
+    await makeLead(agent.id);
+    const cookie = `session=${signSession({ userId: agent.id, role: "AGENT" })}`;
+
+    // De-approve the agent after the (still cryptographically valid) session was signed.
+    await db.user.update({ where: { id: agent.id }, data: { approved: false } });
+
+    const res = await listMine(new Request("http://localhost/api/agent/leads", { headers: { cookie } }));
+    expect(res.status).toBe(403);
+  });
+
   it("returns the lead when it is assigned to the requesting agent", async () => {
     const agentA = await makeAgent();
     const lead = await makeLead(agentA.id);
