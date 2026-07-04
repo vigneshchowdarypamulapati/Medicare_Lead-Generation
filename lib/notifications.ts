@@ -13,18 +13,19 @@ function notifyLeadOfAssignment(lead: Lead, agent: User) {
 
 export async function notifyAssignment({ lead, agent }: { lead: Lead; agent: User }) {
   notifyAgentAssigned(agent, lead);
-  await db.notificationLog.create({
-    data: { leadId: lead.id, recipientType: "AGENT", channel: "IN_APP", status: "SENT" },
-  });
 
-  if (lead.email && lead.email.trim() !== "") {
+  const hasEmail = Boolean(lead.email && lead.email.trim() !== "");
+  if (hasEmail) {
     notifyLeadOfAssignment(lead, agent);
-    await db.notificationLog.create({
-      data: { leadId: lead.id, recipientType: "LEAD", channel: "EMAIL", status: "SENT" },
-    });
-  } else {
-    await db.notificationLog.create({
-      data: { leadId: lead.id, recipientType: "LEAD", channel: "EMAIL", status: "SKIPPED" },
-    });
   }
+
+  // Write both log entries atomically so the pair can never be half-written.
+  await db.$transaction([
+    db.notificationLog.create({
+      data: { leadId: lead.id, recipientType: "AGENT", channel: "IN_APP", status: "SENT" },
+    }),
+    db.notificationLog.create({
+      data: { leadId: lead.id, recipientType: "LEAD", channel: "EMAIL", status: hasEmail ? "SENT" : "SKIPPED" },
+    }),
+  ]);
 }
