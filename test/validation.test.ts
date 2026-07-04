@@ -65,4 +65,46 @@ describe("validateLeadInput", () => {
     expect(result.valid).toBe(false);
     expect(result.errors.honeypot).toBeDefined();
   });
+
+  it("rejects a full name longer than 100 characters", () => {
+    const result = validateLeadInput({ ...validInput, fullName: "a".repeat(101) });
+    expect(result.valid).toBe(false);
+    expect(result.errors.fullName).toBeDefined();
+  });
+
+  it("rejects notes longer than 2000 characters", () => {
+    const result = validateLeadInput({ ...validInput, notes: "a".repeat(2001) });
+    expect(result.valid).toBe(false);
+    expect(result.errors.notes).toBeDefined();
+  });
+
+  it("rejects an email longer than 254 characters", () => {
+    const longEmail = `${"a".repeat(250)}@x.com`;
+    const result = validateLeadInput({ ...validInput, email: longEmail });
+    expect(result.valid).toBe(false);
+    expect(result.errors.email).toBeDefined();
+  });
+
+  it("rejects overlong ageBracket, currentCoverage, and preferredContactTime", () => {
+    const long = "a".repeat(101);
+    const result = validateLeadInput({
+      ...validInput,
+      ageBracket: long,
+      currentCoverage: long,
+      preferredContactTime: long,
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors.ageBracket).toBeDefined();
+    expect(result.errors.currentCoverage).toBeDefined();
+    expect(result.errors.preferredContactTime).toBeDefined();
+  });
+
+  it("accepts fields at exactly their maximum lengths", () => {
+    const result = validateLeadInput({
+      ...validInput,
+      fullName: "a".repeat(100),
+      notes: "a".repeat(2000),
+    });
+    expect(result.valid).toBe(true);
+  });
 });

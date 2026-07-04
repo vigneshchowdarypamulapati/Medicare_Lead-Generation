@@ -48,4 +48,26 @@ describe("POST /api/leads", () => {
     const leads = await db.lead.findMany();
     expect(leads).toHaveLength(0);
   });
+
+  it("returns 400 for a malformed JSON body", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "not json",
+      })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 for a JSON body that is not an object", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "null",
+      })
+    );
+    expect(res.status).toBe(400);
+  });
 });

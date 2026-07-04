@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionUser, requireRole } from "@/lib/session";
+import { readJsonObject } from "@/lib/http";
 import { notifyAssignment } from "@/lib/notifications";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -8,8 +9,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id: leadId } = await params;
-  const { agentId } = (await request.json()) as { agentId?: string };
-  if (!agentId) return NextResponse.json({ error: "agentId is required" }, { status: 400 });
+  const body = await readJsonObject(request);
+  if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+
+  const { agentId } = body;
+  if (typeof agentId !== "string" || !agentId) {
+    return NextResponse.json({ error: "agentId is required" }, { status: 400 });
+  }
 
   const [lead, agent] = await Promise.all([
     db.lead.findUnique({ where: { id: leadId } }),
@@ -35,7 +41,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return tx.lead.update({ where: { id: lead.id }, data: { assignedToId: agent.id } });
   });
 
-  await notifyAssignment({ lead: updatedLead, agent });
+  // The assignment is already committed; a notification failure shouldn't fail the request.
+  try {
+    await notifyAssignment({ lead: updatedLead, agent });
+  } catch (err) {
+    console.error("notifyAssignment failed after assignment was committed:", err);
+  }
 
   return NextResponse.json({ id: updatedLead.id, assignedToId: updatedLead.assignedToId }, { status: 200 });
 }

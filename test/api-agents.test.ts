@@ -82,4 +82,77 @@ describe("admin agents API", () => {
     const updated = await db.user.findUnique({ where: { id: agent.id } });
     expect(updated?.approved).toBe(true);
   });
+
+  it("never exposes passwordHash in the agents list response", async () => {
+    const cookie = await makeAdminCookie();
+    await db.user.create({
+      data: { name: "Agent H", email: "hash@x.com", passwordHash: "super-secret-hash", role: "AGENT", approved: true },
+    });
+
+    const res = await GET(new Request("http://localhost/api/admin/agents", { headers: { cookie } }));
+    expect(res.status).toBe(200);
+    const raw = JSON.stringify(await res.json());
+    expect(raw).not.toContain("passwordHash");
+    expect(raw).not.toContain("super-secret-hash");
+  });
+
+  it("returns 409 for a duplicate agent email", async () => {
+    const cookie = await makeAdminCookie();
+    await db.user.create({
+      data: { name: "Existing", email: "dupe@x.com", passwordHash: "x", role: "AGENT", approved: true },
+    });
+
+    const req = new Request("http://localhost/api/admin/agents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({ name: "Dupe", email: "dupe@x.com", password: "pw123456" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(409);
+  });
+
+  it("returns 404 when approving an unknown agent id", async () => {
+    const cookie = await makeAdminCookie();
+    const req = new Request("http://localhost/api/admin/agents/nonexistent/approve", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({ approved: true }),
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "nonexistent" }) });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 when approved is missing or not a boolean", async () => {
+    const cookie = await makeAdminCookie();
+    const agent = await db.user.create({
+      data: { name: "Agent C", email: "c@x.com", passwordHash: "x", role: "AGENT", approved: true },
+    });
+
+    const req = new Request(`http://localhost/api/admin/agents/${agent.id}/approve`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({}),
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id: agent.id }) });
+    expect(res.status).toBe(400);
+
+    // The empty PATCH must not silently de-approve the agent.
+    const unchanged = await db.user.findUnique({ where: { id: agent.id } });
+    expect(unchanged?.approved).toBe(true);
+  });
+
+  it("returns 404 when the approve target is not an agent", async () => {
+    const cookie = await makeAdminCookie();
+    const otherAdmin = await db.user.create({
+      data: { name: "Other Admin", email: `admin2-${Date.now()}@x.com`, passwordHash: "x", role: "ADMIN", approved: true },
+    });
+
+    const req = new Request(`http://localhost/api/admin/agents/${otherAdmin.id}/approve`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({ approved: false }),
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id: otherAdmin.id }) });
+    expect(res.status).toBe(404);
+  });
 });

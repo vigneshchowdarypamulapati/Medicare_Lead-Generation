@@ -1,19 +1,26 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { readJsonObject } from "@/lib/http";
 import { validateLeadInput, type LeadInput } from "@/lib/validation";
 
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
 export async function POST(request: Request) {
-  const body = (await request.json()) as Partial<LeadInput>;
+  const body = await readJsonObject(request);
+  if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+
   const input: LeadInput = {
-    fullName: body.fullName ?? "",
-    phone: body.phone ?? "",
-    email: body.email ?? "",
-    zip: body.zip ?? "",
-    ageBracket: body.ageBracket ?? "",
-    currentCoverage: body.currentCoverage ?? "",
-    preferredContactTime: body.preferredContactTime ?? "",
-    notes: body.notes ?? "",
-    honeypot: body.honeypot ?? "",
+    fullName: asString(body.fullName),
+    phone: asString(body.phone),
+    email: asString(body.email),
+    zip: asString(body.zip),
+    ageBracket: asString(body.ageBracket),
+    currentCoverage: asString(body.currentCoverage),
+    preferredContactTime: asString(body.preferredContactTime),
+    notes: asString(body.notes),
+    honeypot: asString(body.honeypot),
   };
 
   const result = validateLeadInput(input);

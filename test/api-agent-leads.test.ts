@@ -48,6 +48,13 @@ describe("agent leads API", () => {
     expect(res.status).toBe(404);
   });
 
+  it("treats a cookie with malformed percent-encoding as no session (403, not 500)", async () => {
+    const res = await listMine(
+      new Request("http://localhost/api/agent/leads", { headers: { cookie: "session=%" } })
+    );
+    expect(res.status).toBe(403);
+  });
+
   it("rejects an agent who was de-approved after their session was issued", async () => {
     const agent = await makeAgent();
     await makeLead(agent.id);

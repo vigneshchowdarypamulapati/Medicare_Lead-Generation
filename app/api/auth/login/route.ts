@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/auth";
+import { readJsonObject } from "@/lib/http";
 import { setSessionCookie } from "@/lib/session";
 
 // A precomputed valid bcrypt hash with no corresponding real account. Used to run a
@@ -15,8 +16,11 @@ function getDummyHash(): Promise<string> {
 }
 
 export async function POST(request: Request) {
-  const { email, password } = (await request.json()) as { email?: string; password?: string };
-  if (!email || !password) {
+  const body = await readJsonObject(request);
+  if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+
+  const { email, password } = body;
+  if (typeof email !== "string" || typeof password !== "string" || !email || !password) {
     return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
   }
 

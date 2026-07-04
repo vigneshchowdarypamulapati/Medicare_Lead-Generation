@@ -35,6 +35,29 @@ describe("admin leads API", () => {
     expect(data.leads.length).toBeGreaterThanOrEqual(1);
   });
 
+  it("never exposes passwordHash via the assignedTo relation in the leads list", async () => {
+    const admin = await makeAdmin();
+    const agent = await makeAgent(true);
+    const lead = await makeLead();
+    await db.lead.update({ where: { id: lead.id }, data: { assignedToId: agent.id } });
+
+    const cookie = `session=${signSession({ userId: admin.id, role: "ADMIN" })}`;
+    const res = await GET(new Request("http://localhost/api/admin/leads", { headers: { cookie } }));
+    expect(res.status).toBe(200);
+    const raw = JSON.stringify(await res.json());
+    expect(raw).not.toContain("passwordHash");
+  });
+
+  it("ignores an unknown ?status= filter value instead of crashing", async () => {
+    const admin = await makeAdmin();
+    await makeLead();
+    const cookie = `session=${signSession({ userId: admin.id, role: "ADMIN" })}`;
+    const res = await GET(
+      new Request("http://localhost/api/admin/leads?status=BOGUS_VALUE", { headers: { cookie } })
+    );
+    expect(res.status).toBe(200);
+  });
+
   it("assigns a lead to an approved agent, records the audit trail, and notifies both parties", async () => {
     const admin = await makeAdmin();
     const agent = await makeAgent(true);

@@ -73,4 +73,70 @@ describe("admin payments API", () => {
     const updated = await db.payment.findUnique({ where: { id: payment.id } });
     expect(updated?.status).toBe("PAID");
   });
+
+  it("rejects a non-finite amount", async () => {
+    const admin = await makeAdmin();
+    const lead = await makeLead();
+    const cookie = `session=${signSession({ userId: admin.id, role: "ADMIN" })}`;
+
+    // JSON.parse("1e999") yields Infinity, which must be rejected.
+    const req = new Request(`http://localhost/api/admin/leads/${lead.id}/payments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: '{"amount":1e999,"type":"SOLD"}',
+    });
+    const res = await POST(req, { params: Promise.resolve({ id: lead.id }) });
+    expect(res.status).toBe(400);
+
+    const payments = await db.payment.findMany({ where: { leadId: lead.id } });
+    expect(payments).toHaveLength(0);
+  });
+
+  it("returns 404 when creating a payment for an unknown lead", async () => {
+    const admin = await makeAdmin();
+    const cookie = `session=${signSession({ userId: admin.id, role: "ADMIN" })}`;
+
+    const req = new Request("http://localhost/api/admin/leads/nonexistent/payments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({ amount: 50, type: "SOLD" }),
+    });
+    const res = await POST(req, { params: Promise.resolve({ id: "nonexistent" }) });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 when toggling an unknown payment", async () => {
+    const admin = await makeAdmin();
+    const lead = await makeLead();
+    const cookie = `session=${signSession({ userId: admin.id, role: "ADMIN" })}`;
+
+    const req = new Request(`http://localhost/api/admin/leads/${lead.id}/payments/nonexistent`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({ status: "PAID" }),
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id: lead.id, paymentId: "nonexistent" }) });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 when the payment belongs to a different lead than the path", async () => {
+    const admin = await makeAdmin();
+    const leadA = await makeLead();
+    const leadB = await makeLead();
+    const paymentForB = await db.payment.create({
+      data: { leadId: leadB.id, amount: 50, type: "SOLD", status: "UNPAID", createdById: admin.id },
+    });
+    const cookie = `session=${signSession({ userId: admin.id, role: "ADMIN" })}`;
+
+    const req = new Request(`http://localhost/api/admin/leads/${leadA.id}/payments/${paymentForB.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({ status: "PAID" }),
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id: leadA.id, paymentId: paymentForB.id }) });
+    expect(res.status).toBe(404);
+
+    const unchanged = await db.payment.findUnique({ where: { id: paymentForB.id } });
+    expect(unchanged?.status).toBe("UNPAID");
+  });
 });

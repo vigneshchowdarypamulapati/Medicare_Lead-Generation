@@ -1,17 +1,22 @@
 import { NextResponse } from "next/server";
+import { $Enums, type CallOutcome } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getSessionUser, requireRole } from "@/lib/session";
-import type { CallOutcome } from "@prisma/client";
+import { readJsonObject } from "@/lib/http";
 
-const VALID_OUTCOMES: CallOutcome[] = ["ANSWERED", "MISSED", "VOICEMAIL"];
+const VALID_OUTCOMES = Object.values($Enums.CallOutcome);
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const agent = requireRole(await getSessionUser(request), "AGENT");
   if (!agent) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
-  const { outcome, notes } = (await request.json()) as { outcome?: CallOutcome; notes?: string };
-  if (!outcome || !VALID_OUTCOMES.includes(outcome)) {
+  const body = await readJsonObject(request);
+  if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+
+  const outcome = body.outcome as CallOutcome | undefined;
+  const notes = typeof body.notes === "string" ? body.notes : undefined;
+  if (typeof outcome !== "string" || !(VALID_OUTCOMES as string[]).includes(outcome)) {
     return NextResponse.json({ error: "Invalid outcome" }, { status: 400 });
   }
 

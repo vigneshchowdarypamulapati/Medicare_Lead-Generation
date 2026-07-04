@@ -1,24 +1,21 @@
 import { NextResponse } from "next/server";
+import { $Enums, type LeadStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getSessionUser, requireRole } from "@/lib/session";
-import type { LeadStatus } from "@prisma/client";
+import { readJsonObject } from "@/lib/http";
 
-const VALID_STATUSES: LeadStatus[] = [
-  "NEW",
-  "CONTACTED",
-  "APPOINTMENT_SET",
-  "SOLD",
-  "CLOSED",
-  "NOT_INTERESTED",
-];
+const VALID_STATUSES = Object.values($Enums.LeadStatus);
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const agent = requireRole(await getSessionUser(request), "AGENT");
   if (!agent) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
-  const { status } = (await request.json()) as { status?: LeadStatus };
-  if (!status || !VALID_STATUSES.includes(status)) {
+  const body = await readJsonObject(request);
+  if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+
+  const status = body.status as LeadStatus | undefined;
+  if (typeof status !== "string" || !(VALID_STATUSES as string[]).includes(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 

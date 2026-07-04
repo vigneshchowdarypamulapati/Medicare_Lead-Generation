@@ -13,7 +13,15 @@ function getCookieFromHeader(header: string | null): string | undefined {
     const idx = part.indexOf("=");
     if (idx === -1) continue;
     const key = part.slice(0, idx).trim();
-    if (key === COOKIE_NAME) return decodeURIComponent(part.slice(idx + 1).trim());
+    if (key === COOKIE_NAME) {
+      const raw = part.slice(idx + 1).trim();
+      try {
+        return decodeURIComponent(raw);
+      } catch {
+        // Malformed percent-encoding (e.g. "session=%") — treat as no session.
+        return undefined;
+      }
+    }
   }
   return undefined;
 }
