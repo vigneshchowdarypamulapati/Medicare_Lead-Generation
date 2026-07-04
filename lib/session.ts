@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export type SessionPayload = { userId: string; role: "ADMIN" | "AGENT" };
+export type SessionPayload = { userId: string; role: "ADMIN" | "AGENT" | "LEAD" };
 
 const COOKIE_NAME = "session";
 
@@ -110,9 +110,9 @@ export async function getSessionUser(request?: Request) {
   return user;
 }
 
-export function requireRole<T extends { role: "ADMIN" | "AGENT" }>(
+export function requireRole<T extends { role: "ADMIN" | "AGENT" | "LEAD" }>(
   user: T | null,
-  role: "ADMIN" | "AGENT"
+  role: "ADMIN" | "AGENT" | "LEAD"
 ): T | null {
   if (!user || user.role !== role) return null;
   return user;

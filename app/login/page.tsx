@@ -2,8 +2,15 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const FALLBACK_ERROR = "Something went wrong. Please try again or call us.";
+
+const HOME_BY_ROLE: Record<"ADMIN" | "AGENT" | "LEAD", string> = {
+  ADMIN: "/admin",
+  AGENT: "/agent",
+  LEAD: "/portal",
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,8 +42,8 @@ export default function LoginPage() {
         return;
       }
 
-      const body = (await res.json()) as { role: "ADMIN" | "AGENT" };
-      router.push(body.role === "ADMIN" ? "/admin" : "/agent");
+      const body = (await res.json()) as { role: "ADMIN" | "AGENT" | "LEAD" };
+      router.push(HOME_BY_ROLE[body.role] ?? "/");
       router.refresh();
     } catch {
       setError(FALLBACK_ERROR);
@@ -65,6 +72,12 @@ export default function LoginPage() {
         >
           {submitting ? "Signing in..." : "Sign In"}
         </button>
+        <p className="text-sm text-slate-600 text-center">
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="text-green-700 font-medium hover:underline">
+            Create one
+          </Link>
+        </p>
       </form>
     </main>
   );

@@ -27,8 +27,12 @@ export default function Footer() {
           </div>
         </div>
       </div>
-      <div className="border-t border-slate-800 py-4 text-center text-xs text-slate-500">
-        &copy; {new Date().getFullYear()} Medicare Coverage Guidance. All rights reserved.
+      <div className="border-t border-slate-800 py-4 px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+        <span>&copy; {new Date().getFullYear()} Medicare Coverage Guidance. All rights reserved.</span>
+        <span className="flex gap-4">
+          <Link href="/login" className="hover:text-white">Log in</Link>
+          <Link href="/signup" className="hover:text-white">Sign up</Link>
+        </span>
       </div>
     </footer>
   );

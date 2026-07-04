@@ -27,7 +27,16 @@ export default function Header() {
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <Link href="/login" className="hidden md:inline text-sm text-slate-700 hover:text-green-800">
+            Log in
+          </Link>
+          <Link
+            href="/signup"
+            className="hidden md:inline text-sm font-medium text-green-800 hover:underline"
+          >
+            Sign up
+          </Link>
           <ClickToCallButton className="rounded-lg bg-green-700 px-4 py-2 text-sm text-white font-semibold hover:bg-green-800 transition-colors" />
           <button
             type="button"
@@ -70,6 +79,18 @@ export default function Header() {
               {link.label}
             </Link>
           ))}
+          <div className="border-t border-green-100 pt-3 flex flex-col gap-3">
+            <Link href="/login" className="hover:text-green-800" onClick={() => setMenuOpen(false)}>
+              Log in
+            </Link>
+            <Link
+              href="/signup"
+              className="font-medium text-green-800 hover:underline"
+              onClick={() => setMenuOpen(false)}
+            >
+              Sign up
+            </Link>
+          </div>
         </div>
       </nav>
     </header>

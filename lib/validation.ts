@@ -63,3 +63,55 @@ export function validateLeadInput(input: LeadInput): ValidationResult {
 
   return { valid: Object.keys(errors).length === 0, errors };
 }
+
+export type SignupInput = {
+  role: string;
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  honeypot: string;
+};
+
+export type SignupValidationResult = {
+  valid: boolean;
+  errors: Partial<Record<keyof SignupInput, string>>;
+};
+
+const MIN_PASSWORD = 8;
+const MAX_PASSWORD = 200;
+// Only self-service roles may register. ADMIN can never be created via signup.
+const SIGNUP_ROLES = ["AGENT", "LEAD"];
+
+export function validateSignupInput(input: SignupInput): SignupValidationResult {
+  const errors: SignupValidationResult["errors"] = {};
+
+  if (input.honeypot && input.honeypot.trim() !== "") {
+    errors.honeypot = "Spam detected";
+  }
+  if (!SIGNUP_ROLES.includes(input.role)) {
+    errors.role = "Please choose whether you are an agent or a customer";
+  }
+  if (!input.name || input.name.trim().length < 2) {
+    errors.name = "Your name is required";
+  } else if (input.name.trim().length > MAX_FULL_NAME) {
+    errors.name = `Name must be ${MAX_FULL_NAME} characters or fewer`;
+  }
+  if (!input.email || input.email.trim() === "") {
+    errors.email = "Email is required";
+  } else if (input.email.trim().length > MAX_EMAIL) {
+    errors.email = `Email must be ${MAX_EMAIL} characters or fewer`;
+  } else if (!EMAIL_RE.test(input.email.trim())) {
+    errors.email = "Email address is not valid";
+  }
+  if (input.phone && input.phone.trim() !== "" && !PHONE_RE.test(input.phone.trim())) {
+    errors.phone = "Phone number is not valid";
+  }
+  if (!input.password || input.password.length < MIN_PASSWORD) {
+    errors.password = `Password must be at least ${MIN_PASSWORD} characters`;
+  } else if (input.password.length > MAX_PASSWORD) {
+    errors.password = `Password must be ${MAX_PASSWORD} characters or fewer`;
+  }
+
+  return { valid: Object.keys(errors).length === 0, errors };
+}

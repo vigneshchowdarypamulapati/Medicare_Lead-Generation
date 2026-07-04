@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateLeadInput } from "@/lib/validation";
+import { validateLeadInput, validateSignupInput } from "@/lib/validation";
 
 const validInput = {
   fullName: "Jane Doe",
@@ -106,5 +106,76 @@ describe("validateLeadInput", () => {
       notes: "a".repeat(2000),
     });
     expect(result.valid).toBe(true);
+  });
+});
+
+const validSignup = {
+  role: "LEAD",
+  name: "Jane Doe",
+  email: "jane@example.com",
+  phone: "555-123-4567",
+  password: "supersecret",
+  honeypot: "",
+};
+
+describe("validateSignupInput", () => {
+  it("accepts a valid lead signup", () => {
+    expect(validateSignupInput(validSignup).valid).toBe(true);
+  });
+
+  it("accepts a valid agent signup", () => {
+    expect(validateSignupInput({ ...validSignup, role: "AGENT" }).valid).toBe(true);
+  });
+
+  it("accepts a signup with no phone (phone is optional)", () => {
+    expect(validateSignupInput({ ...validSignup, phone: "" }).valid).toBe(true);
+  });
+
+  it("rejects the ADMIN role", () => {
+    const result = validateSignupInput({ ...validSignup, role: "ADMIN" });
+    expect(result.valid).toBe(false);
+    expect(result.errors.role).toBeDefined();
+  });
+
+  it("rejects an unknown role", () => {
+    const result = validateSignupInput({ ...validSignup, role: "SUPERUSER" });
+    expect(result.valid).toBe(false);
+    expect(result.errors.role).toBeDefined();
+  });
+
+  it("rejects a missing name", () => {
+    const result = validateSignupInput({ ...validSignup, name: "" });
+    expect(result.valid).toBe(false);
+    expect(result.errors.name).toBeDefined();
+  });
+
+  it("rejects a missing email", () => {
+    const result = validateSignupInput({ ...validSignup, email: "" });
+    expect(result.valid).toBe(false);
+    expect(result.errors.email).toBeDefined();
+  });
+
+  it("rejects a malformed email", () => {
+    const result = validateSignupInput({ ...validSignup, email: "nope" });
+    expect(result.valid).toBe(false);
+    expect(result.errors.email).toBeDefined();
+  });
+
+  it("rejects a password shorter than 8 characters", () => {
+    const result = validateSignupInput({ ...validSignup, password: "short" });
+    expect(result.valid).toBe(false);
+    expect(result.errors.password).toBeDefined();
+  });
+
+  it("rejects a malformed phone when provided", () => {
+    const result = validateSignupInput({ ...validSignup, phone: "abc" });
+    expect(result.valid).toBe(false);
+    expect(result.errors.phone).toBeDefined();
+  });
+
+  it("rejects a filled honeypot", () => {
+    const result = validateSignupInput({ ...validSignup, honeypot: "bot" });
+    expect(result.valid).toBe(false);
+    expect(result.errors.honeypot).toBeDefined();
   });
 });

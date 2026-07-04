@@ -97,6 +97,40 @@ export default function AgentManager({ agents }: { agents: Agent[] }) {
     }
   }
 
+  const pending = agents.filter((a) => !a.approved);
+  const approved = agents.filter((a) => a.approved);
+
+  const renderRow = (agent: Agent) => (
+    <tr key={agent.id} className="border-t border-slate-100">
+      <td className="px-4 py-2">{agent.name}</td>
+      <td className="px-4 py-2">{agent.email}</td>
+      <td className="px-4 py-2">
+        <span
+          className={`rounded-full px-2 py-1 text-xs font-semibold ${
+            agent.approved ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"
+          }`}
+        >
+          {agent.approved ? "Approved" : "Pending"}
+        </span>{" "}
+        <span
+          className={`rounded-full px-2 py-1 text-xs font-semibold ${
+            agent.active ? "bg-green-100 text-green-800" : "bg-slate-200 text-slate-600"
+          }`}
+        >
+          {agent.active ? "Active" : "Inactive"}
+        </span>
+      </td>
+      <td className="px-4 py-2">
+        <button onClick={() => toggleApproval(agent.id, agent.approved)} className="text-green-700 hover:underline">
+          {agent.approved ? "Revoke approval" : "Approve"}
+        </button>{" "}
+        <button onClick={() => toggleActive(agent.id, agent.active)} className="ml-3 text-green-700 hover:underline">
+          {agent.active ? "Deactivate" : "Reactivate"}
+        </button>
+      </td>
+    </tr>
+  );
+
   return (
     <div className="grid gap-6">
       <section className="rounded-xl border border-slate-200 bg-white p-6">
@@ -117,9 +151,46 @@ export default function AgentManager({ agents }: { agents: Agent[] }) {
         </form>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6">
-        <h2 className="font-bold text-slate-900 mb-3">Agents</h2>
-        {toggleError && <p className="mb-3 text-sm text-red-600">{toggleError}</p>}
+      {toggleError && (
+        <p className="text-sm text-red-600" role="alert">{toggleError}</p>
+      )}
+
+      <AgentTable
+        title="Pending Approval"
+        emptyLabel="No agents are waiting for approval."
+        agents={pending}
+        renderRow={renderRow}
+      />
+
+      <AgentTable
+        title="Approved Agents"
+        emptyLabel="No approved agents yet."
+        agents={approved}
+        renderRow={renderRow}
+      />
+    </div>
+  );
+}
+
+function AgentTable({
+  title,
+  emptyLabel,
+  agents,
+  renderRow,
+}: {
+  title: string;
+  emptyLabel: string;
+  agents: Agent[];
+  renderRow: (agent: Agent) => React.ReactNode;
+}) {
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-6">
+      <h2 className="font-bold text-slate-900 mb-3">
+        {title} <span className="text-slate-400 font-normal">({agents.length})</span>
+      </h2>
+      {agents.length === 0 ? (
+        <p className="text-sm text-slate-500">{emptyLabel}</p>
+      ) : (
         <table className="min-w-full text-sm">
           <thead className="bg-slate-100 text-left text-slate-600">
             <tr>
@@ -129,32 +200,9 @@ export default function AgentManager({ agents }: { agents: Agent[] }) {
               <th className="px-4 py-2"></th>
             </tr>
           </thead>
-          <tbody>
-            {agents.map((agent) => (
-              <tr key={agent.id} className="border-t border-slate-100">
-                <td className="px-4 py-2">{agent.name}</td>
-                <td className="px-4 py-2">{agent.email}</td>
-                <td className="px-4 py-2">
-                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${agent.approved ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>
-                    {agent.approved ? "Approved" : "Pending"}
-                  </span>{" "}
-                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${agent.active ? "bg-green-100 text-green-800" : "bg-slate-200 text-slate-600"}`}>
-                    {agent.active ? "Active" : "Inactive"}
-                  </span>
-                </td>
-                <td className="px-4 py-2">
-                  <button onClick={() => toggleApproval(agent.id, agent.approved)} className="text-green-700 hover:underline">
-                    {agent.approved ? "Revoke approval" : "Approve"}
-                  </button>{" "}
-                  <button onClick={() => toggleActive(agent.id, agent.active)} className="ml-3 text-green-700 hover:underline">
-                    {agent.active ? "Deactivate" : "Reactivate"}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          <tbody>{agents.map(renderRow)}</tbody>
         </table>
-      </section>
-    </div>
+      )}
+    </section>
   );
 }
