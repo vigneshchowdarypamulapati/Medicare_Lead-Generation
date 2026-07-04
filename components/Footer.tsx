@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ClickToCallButton from "@/components/ClickToCallButton";
 
 export default function Footer() {
   return (
@@ -21,6 +22,9 @@ export default function Footer() {
           <p className="font-semibold text-white mb-2">Get Help</p>
           <p>Speak with a licensed Medicare advocate about your coverage options.</p>
           <Link href="/#intake-form" className="hover:text-white underline">Request a callback</Link>
+          <div className="mt-3">
+            <ClickToCallButton className="inline-block rounded-lg bg-green-700 px-4 py-2 text-white text-sm font-semibold hover:bg-green-600 transition-colors" />
+          </div>
         </div>
       </div>
       <div className="border-t border-slate-800 py-4 text-center text-xs text-slate-500">

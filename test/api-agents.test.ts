@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { signSession } from "@/lib/session";
 import { GET, POST } from "@/app/api/admin/agents/route";
 import { PATCH } from "@/app/api/admin/agents/[id]/approve/route";
+import { PATCH as PATCH_ACTIVE } from "@/app/api/admin/agents/[id]/active/route";
 
 beforeAll(() => {
   process.env.SESSION_SECRET = "test-secret-do-not-use-in-prod";
@@ -154,5 +155,62 @@ describe("admin agents API", () => {
     });
     const res = await PATCH(req, { params: Promise.resolve({ id: otherAdmin.id }) });
     expect(res.status).toBe(404);
+  });
+
+  it("lets an admin deactivate an agent", async () => {
+    const cookie = await makeAdminCookie();
+    const agent = await db.user.create({
+      data: { name: "Agent D", email: "d@x.com", passwordHash: "x", role: "AGENT", approved: true, active: true },
+    });
+
+    const req = new Request(`http://localhost/api/admin/agents/${agent.id}/active`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({ active: false }),
+    });
+
+    const res = await PATCH_ACTIVE(req, { params: Promise.resolve({ id: agent.id }) });
+    expect(res.status).toBe(200);
+
+    const updated = await db.user.findUnique({ where: { id: agent.id } });
+    expect(updated?.active).toBe(false);
+  });
+
+  it("returns 404 when the deactivate target is not an agent", async () => {
+    const cookie = await makeAdminCookie();
+    const otherAdmin = await db.user.create({
+      data: { name: "Other Admin", email: `admin3-${Date.now()}@x.com`, passwordHash: "x", role: "ADMIN", approved: true },
+    });
+
+    const req = new Request(`http://localhost/api/admin/agents/${otherAdmin.id}/active`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({ active: false }),
+    });
+    const res = await PATCH_ACTIVE(req, { params: Promise.resolve({ id: otherAdmin.id }) });
+    expect(res.status).toBe(404);
+
+    // The admin account must remain active.
+    const unchanged = await db.user.findUnique({ where: { id: otherAdmin.id } });
+    expect(unchanged?.active).toBe(true);
+  });
+
+  it("returns 400 when active is missing or not a boolean", async () => {
+    const cookie = await makeAdminCookie();
+    const agent = await db.user.create({
+      data: { name: "Agent E", email: "e@x.com", passwordHash: "x", role: "AGENT", approved: true, active: true },
+    });
+
+    const req = new Request(`http://localhost/api/admin/agents/${agent.id}/active`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", cookie },
+      body: JSON.stringify({}),
+    });
+    const res = await PATCH_ACTIVE(req, { params: Promise.resolve({ id: agent.id }) });
+    expect(res.status).toBe(400);
+
+    // The empty PATCH must not silently deactivate the agent.
+    const unchanged = await db.user.findUnique({ where: { id: agent.id } });
+    expect(unchanged?.active).toBe(true);
   });
 });

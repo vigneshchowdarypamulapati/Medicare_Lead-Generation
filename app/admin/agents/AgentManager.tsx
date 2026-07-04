@@ -71,6 +71,32 @@ export default function AgentManager({ agents }: { agents: Agent[] }) {
     }
   }
 
+  async function toggleActive(agentId: string, active: boolean) {
+    setToggleError(null);
+    try {
+      const res = await fetch(`/api/admin/agents/${agentId}/active`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active: !active }),
+      });
+
+      if (!res.ok) {
+        let body: { error?: string } = {};
+        try {
+          body = (await res.json()) as { error?: string };
+        } catch {
+          // Non-JSON error response; fall through to the generic message.
+        }
+        setToggleError(body.error ?? "Failed to update active status");
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setToggleError("Something went wrong. Please try again.");
+    }
+  }
+
   return (
     <div className="grid gap-6">
       <section className="rounded-xl border border-slate-200 bg-white p-6">
@@ -111,11 +137,17 @@ export default function AgentManager({ agents }: { agents: Agent[] }) {
                 <td className="px-4 py-2">
                   <span className={`rounded-full px-2 py-1 text-xs font-semibold ${agent.approved ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>
                     {agent.approved ? "Approved" : "Pending"}
+                  </span>{" "}
+                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${agent.active ? "bg-green-100 text-green-800" : "bg-slate-200 text-slate-600"}`}>
+                    {agent.active ? "Active" : "Inactive"}
                   </span>
                 </td>
                 <td className="px-4 py-2">
                   <button onClick={() => toggleApproval(agent.id, agent.approved)} className="text-green-700 hover:underline">
                     {agent.approved ? "Revoke approval" : "Approve"}
+                  </button>{" "}
+                  <button onClick={() => toggleActive(agent.id, agent.active)} className="ml-3 text-green-700 hover:underline">
+                    {agent.active ? "Deactivate" : "Reactivate"}
                   </button>
                 </td>
               </tr>
